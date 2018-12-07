@@ -12,21 +12,43 @@ import android.view.Menu
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
+import io.monkeypatch.monkeyconf.app.talk.TalkListView
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.item_talk.view.*
 
-class TalkListActivity : AppCompatActivity() {
+class TalkListActivity : AppCompatActivity(), TalkListView {
+    private val presenter = Container.talkPresenter(this)
+
+
+    override fun displayTalks(talks: List<Talk>) {
+        recyclerView.swapAdapter(
+            TalkListAdapter(
+                talks,
+                this::openTalk
+            ),
+            false
+        )
+    }
+
+
+    override fun displayError(e: Exception) {
+
+    }
+
+    override fun showLoading(visible: Boolean) {
+        progressBar.visibility = if (visible) View.VISIBLE else View.INVISIBLE
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        presenter.onCreate()
 
         recyclerView.apply {
             layoutManager = LinearLayoutManager(this@TalkListActivity)
             setHasFixedSize(true)
         }
-
-        sampleDisplayList()
+        presenter.loadTalks()
     }
 
 
@@ -62,13 +84,6 @@ class TalkListActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    fun sampleDisplayList() {
-        recyclerView.swapAdapter(TalkListAdapter(
-            listOf("a", "b", "c"),
-            this::openTalk),
-            false
-        )
-    }
 
     private fun openTalk(talkId: String) {
         startActivity(
@@ -79,15 +94,15 @@ class TalkListActivity : AppCompatActivity() {
 
 
 class TalkViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-    fun displayTalk(summary: Any, action: (String) -> Unit) {
-        itemView.talkHourTextView.text =  "hour"
-        itemView.talkTitleTextView.text = "title"
-        itemView.talkSubTitleTextView.text = "subtitle"
-        itemView.setOnClickListener { action("click") }
+    fun displayTalk(summary: Talk, action: (String) -> Unit) {
+        itemView.talkHourTextView.text = summary.date
+        itemView.talkTitleTextView.text = summary.title + " - " + summary.id
+        itemView.talkSubTitleTextView.text = "${summary.speakers} - ${summary.room}"
+        itemView.setOnClickListener { action(summary.id) }
     }
 }
 
-class TalkListAdapter(val talks: List<Any>, val action: (String) -> Unit) : RecyclerView.Adapter<TalkViewHolder>() {
+class TalkListAdapter(val talks: List<Talk>, val action: (String) -> Unit) : RecyclerView.Adapter<TalkViewHolder>() {
     override fun onCreateViewHolder(parent: ViewGroup, pos: Int): TalkViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_talk, parent, false)
         return TalkViewHolder(view)
